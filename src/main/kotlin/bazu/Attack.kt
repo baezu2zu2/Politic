@@ -112,58 +112,64 @@ class Attack {
     }
 
     fun counterAttack(){
-        //TODO 1분 뒤에 실행되게 변경
 
-        if (attack.difficulty > 3) {
-            attack.fightingPlayer.addAll(
-                leader!!.getNearbyEntities(3.0, 3.0, 3.0).filter{ it is Player } as List<Player>
-            )
+        class counterAttackLater: BukkitRunnable(){
+            override fun run() {
+                if (attack.difficulty > 3) {
+                    attack.fightingPlayer.addAll(
+                        leader!!.getNearbyEntities(3.0, 3.0, 3.0).filter{ it is Player } as List<Player>
+                    )
 
-            attack.fightingPlayer.add(leader!!)
+                    attack.fightingPlayer.add(leader!!)
 
-            for (i in attack.fightingPlayer)
-                i.teleport(Location(Bukkit.getWorld("world"), -18.5, 64.0, 208.5))
+                    for (i in attack.fightingPlayer)
+                        i.teleport(Location(Bukkit.getWorld("world"), -18.5, 64.0, 208.5))
 
-            spawnMob(Location(Bukkit.getWorld("world"), -18.5, 64.0, 235.5)
-                , Location(Bukkit.getWorld("world"), -18.5, 64.0, 225.5)
-                , Location(Bukkit.getWorld("world"), -18.5, 64.0, 252.5), multy = 2)
+                    spawnMob(Location(Bukkit.getWorld("world"), -18.5, 64.0, 235.5)
+                        , Location(Bukkit.getWorld("world"), -18.5, 64.0, 225.5)
+                        , Location(Bukkit.getWorld("world"), -18.5, 64.0, 252.5), multy = 2)
 
-            attacking = true
+                    attacking = true
 
-            class AttackResult: BukkitRunnable(){
-                override fun run() {
-                    if (attack.fightingPlayer.filter { it.gameMode != GameMode.SPECTATOR }.isEmpty()
-                        || attack.spawnedEntity.filter{ !it.isDead }.isEmpty()){
+                    class AttackResult: BukkitRunnable(){
+                        override fun run() {
+                            if (attack.fightingPlayer.filter { it.gameMode != GameMode.SPECTATOR }.isEmpty()
+                                || attack.spawnedEntity.filter{ !it.isDead }.isEmpty()){
 
-                        if (attack.fightingPlayer.filter { it.gameMode != GameMode.SPECTATOR }.isEmpty()) {
-                            Bukkit.broadcast(Component.text("우민마을 침략이 실패로 끝났습니다.."))
-                        } else if(attack.spawnedEntity.filter{ !it.isDead }.isEmpty()){
-                            Bukkit.broadcast(Component.text("우민마을 침략이 성공으로 끝났습니다!"))
+                                if (attack.fightingPlayer.filter { it.gameMode != GameMode.SPECTATOR }.isEmpty()) {
+                                    Bukkit.broadcast(Component.text("우민마을 침략이 실패로 끝났습니다.."))
+                                } else if(attack.spawnedEntity.filter{ !it.isDead }.isEmpty()){
+                                    Bukkit.broadcast(Component.text("우민마을 침략이 성공으로 끝났습니다!"))
 
-                            if (attack.difficulty < attack.difficultyEntity.size-1) attack.difficulty+=2
-                            if (attack.difficulty == attack.difficultyEntity.size-1)
-                                attack.difficulty = attack.difficultyEntity.size
+                                    if (attack.difficulty < attack.difficultyEntity.size-1) attack.difficulty+=2
+                                    if (attack.difficulty == attack.difficultyEntity.size-1)
+                                        attack.difficulty = attack.difficultyEntity.size
 
-                            treasury.value!!.addItem(ItemStack(Material.EMERALD, 64)
-                                , ItemStack(Material.EMERALD, 64))
+                                    treasury.value!!.addItem(ItemStack(Material.EMERALD, 64)
+                                        , ItemStack(Material.EMERALD, 64))
+                                }
+
+
+                                for (i in Bukkit.getOnlinePlayers()){
+                                    i.gameMode = GameMode.ADVENTURE
+                                    for (j in 0 until i.inventory.size)
+                                        if (Random().nextInt(20) == 0) i.inventory.setItem(j, ItemStack(Material.AIR))
+                                }
+                                attack.spawnedEntity.clear()
+                                attack.fightingPlayer.clear()
+                                this.cancel()
+                                attacking = false
+                            }
                         }
-
-
-                        for (i in Bukkit.getOnlinePlayers()){
-                            i.gameMode = GameMode.ADVENTURE
-                            for (j in 0 until i.inventory.size)
-                                if (Random().nextInt(20) == 0) i.inventory.setItem(j, ItemStack(Material.AIR))
-                        }
-                        attack.spawnedEntity.clear()
-                        attack.fightingPlayer.clear()
-                        this.cancel()
-                        attacking = false
                     }
+
+                    AttackResult().runTaskTimer(inst.value, 0, 1)
                 }
             }
-
-            AttackResult().runTaskTimer(inst.value, 0, 1)
         }
+
+        counterAttackLater().runTaskLater(inst.value, (20*60).toLong())
+
     }
 }
 
