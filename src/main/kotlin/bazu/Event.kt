@@ -59,13 +59,13 @@ class Event: Listener {
     fun onInteractAtBlock(event: PlayerInteractEvent){
         if (event.action == Action.RIGHT_CLICK_BLOCK) {
             if (event.clickedBlock!!.location == Location(Bukkit.getWorld("world"), -11.0, 65.0, 39.0)) {
-                val item = event.player.inventory.itemInMainHand
+                val item = event.player.inventory.itemInMainHand.clone()
 
                 val random = java.util.Random()
 
                 if (random.nextInt(4) == 0) {
                     event.player.sendMessage("성공! 축하드립니다!")
-                    item.amount *= 2
+                    event.player.inventory.addItem(item)
                 }else{
                     event.player.sendMessage("실패! 축하드립니다!")
                     event.player.inventory.setItemInMainHand(ItemStack(Material.AIR))
@@ -77,7 +77,8 @@ class Event: Listener {
 
                 if (random.nextInt(8) == 0) {
                     event.player.sendMessage("성공! 축하드립니다!")
-                    item.amount *= 4
+                    item.amount *= 3
+                    event.player.inventory.addItem(item)
                 }else{
                     event.player.sendMessage("실패! 축하드립니다!")
                     event.player.inventory.setItemInMainHand(ItemStack(Material.AIR))
