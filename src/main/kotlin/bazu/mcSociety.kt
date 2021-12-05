@@ -3,9 +3,6 @@ package bazu
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
 
-private lateinit var dst: mcSociety
-val inst = lazy { dst }
-
 class mcSociety: JavaPlugin() {
     override fun onEnable() {
 
@@ -13,8 +10,8 @@ class mcSociety: JavaPlugin() {
         Bukkit.getPluginManager().registerEvents(GUI(), this)
         dst = this
 
-        for (i in commands) {
-            val command = Bukkit.getPluginCommand(i)
+        for (i in CommandsLabel.values()) {
+            val command = Bukkit.getPluginCommand(i.label)
             if (command != null) {
                 command.setExecutor(Commands())
                 command.setTabCompleter(Commands())

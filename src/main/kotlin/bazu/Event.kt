@@ -11,6 +11,7 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.Action
 import org.bukkit.event.entity.EntityDamageByEntityEvent
+import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.EntityPickupItemEvent
 import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.event.player.PlayerAttemptPickupItemEvent
@@ -22,15 +23,18 @@ import kotlin.random.Random
 
 class Event: Listener {
     @EventHandler
-    fun onDamaged(event: EntityDamageByEntityEvent){
+    fun onDamaged(event: EntityDamageEvent){
         if (event.entity is Player){
             if (!revolutioning && !attacking) {
                 event.isCancelled = true
-            }else{
-                if (midTeam.value!!.entries.contains(event.damager.name) || midTeam.value!!.entries.contains(event.entity.name)){
-                    event.isCancelled = true
-                }
             }
+        }
+    }
+
+    @EventHandler
+    fun onDamagedByEntity(event: EntityDamageByEntityEvent){
+        if (midTeam.value!!.entries.contains(event.damager.name) || midTeam.value!!.entries.contains(event.entity.name)){
+            event.isCancelled = true
         }
     }
 
@@ -57,30 +61,26 @@ class Event: Listener {
             if (event.clickedBlock!!.location == Location(Bukkit.getWorld("world"), -11.0, 65.0, 39.0)) {
                 val item = event.player.inventory.itemInMainHand
 
-                event.player.inventory.removeItem(item)
-
                 val random = java.util.Random()
 
                 if (random.nextInt(4) == 0) {
                     event.player.sendMessage("성공! 축하드립니다!")
                     item.amount *= 2
-                    event.player.inventory.addItem(item)
                 }else{
                     event.player.sendMessage("실패! 축하드립니다!")
+                    event.player.inventory.setItemInMainHand(ItemStack(Material.AIR))
                 }
             }else if (event.clickedBlock!!.location == Location(Bukkit.getWorld("world"), -11.0, 65.0, 35.0)){
                 val item = event.player.inventory.itemInMainHand
-
-                event.player.inventory.removeItem(item)
 
                 val random = java.util.Random()
 
                 if (random.nextInt(8) == 0) {
                     event.player.sendMessage("성공! 축하드립니다!")
                     item.amount *= 4
-                    event.player.inventory.addItem(item)
                 }else{
                     event.player.sendMessage("실패! 축하드립니다!")
+                    event.player.inventory.setItemInMainHand(ItemStack(Material.AIR))
                 }
             }
         }

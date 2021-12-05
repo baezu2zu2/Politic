@@ -2,10 +2,7 @@ package bazu;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
-import org.bukkit.Bukkit
-import org.bukkit.GameMode
-import org.bukkit.Location
-import org.bukkit.Material;
+import org.bukkit.*
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -14,22 +11,6 @@ import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta
 import org.bukkit.scheduler.BukkitRunnable
-
-var playerHeads: ArrayList<ItemStack> = arrayListOf()
-
-fun setplayerHeads(){
-    playerHeads.clear()
-
-    for (i in Bukkit.getOnlinePlayers()) {
-        val playerHead = ItemStack(Material.PLAYER_HEAD)
-        val meta = playerHead.itemMeta
-        if (meta is SkullMeta) {
-            meta.owningPlayer = i
-            playerHead.itemMeta = meta
-        }
-        playerHeads.add(playerHead)
-    }
-}
 
 class GUI: Listener {
 
@@ -166,8 +147,7 @@ class GUI: Listener {
         taxRunnable.cancel()
 
         taxRunnable = TaxRunnable()
-        taxTerm = (newTax*Bukkit.getOnlinePlayers().size/13+1).toDouble()
-        tax = newTax
+        taxTerm = (tax*Bukkit.getOnlinePlayers().size/20+1).toDouble()
 
         Bukkit.broadcast(Component.text("세금은 이제부터 ${taxTerm}분마다 걷어집니다!"))
         taxRunnable.runTaskTimer(inst.value, (taxTerm*20*60).toLong(), (taxTerm*20*60).toLong())
@@ -489,11 +469,12 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
             gui.decisionSucceed = SucceedProperty.SUCCEED
         }
     },
-    COUNTER_ATTACK(ItemStack(Material.IRON_SWORD), false){
+    COUNTER_ATTACK(ItemStack(Material.IRON_SWORD), true){
         init{
             item = genMeta(item, Component.text("우민마을 공격하기", TextColor.color(0xff, 0xff, 0x0))
                 , Component.text("우민마을을 공격해 에메랄드를 약탈해 올 수 있습니다.")
-                , Component.text("하지만 조심하세요.. 누구나 자신의 것을 뺏기면 화나는 법이니까요.."))
+                , Component.text("우리를 괴롭혔던 우민들에게 역공하는 거죠!")
+                , Component.text("체제가 민주주의일 경우 민중의 과반수의 동의가 필요합니다."))
         }
 
         override fun run() {
@@ -699,6 +680,7 @@ enum class Windows(val label: Component, var items: ArrayList<ItemStack>, val no
                                     for (i in leaderTeam.value!!.entries) leaderTeam.value!!.removeEntry(i)
                                     Bukkit.broadcast(Component.text("국가 진영이 승리했습니다!", TextColor.color(0xff, 0x00, 0x00)))
                                     setLeaderWithMessage(leader!!)
+                                    Bukkit.getWorld("world")!!.setGameRule(GameRule.KEEP_INVENTORY, false)
                                     this.cancel()
                                 } else if (leaderTeam.value!!.entries.isEmpty()) {
                                     revolutioning = false
@@ -713,6 +695,7 @@ enum class Windows(val label: Component, var items: ArrayList<ItemStack>, val no
                                     for (i in revolutionTeam.value!!.entries) revolutionTeam.value!!.removeEntry(i)
                                     for (i in leaderTeam.value!!.entries) leaderTeam.value!!.removeEntry(i)
                                     for (i in midTeam.value!!.entries) leaderTeam.value!!.removeEntry(i)
+                                    Bukkit.getWorld("world")!!.setGameRule(GameRule.KEEP_INVENTORY, false)
                                     Bukkit.broadcast(Component.text("혁명 진영이 승리했습니다!", TextColor.color(0x00, 0x00, 0xff)))
                                     this.cancel()
                                 }

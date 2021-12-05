@@ -17,3 +17,6 @@ commands:
   revolution:
 
   n:
+
+  callAttack:
+    permission: op

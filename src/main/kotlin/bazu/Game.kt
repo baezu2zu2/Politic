@@ -1,3 +1,5 @@
+@file:JvmName("Game")
+
 package bazu
 
 import net.kyori.adventure.text.Component
@@ -27,7 +29,29 @@ var voteRunnable = VoteRunnable()
 var changeMoney = ChangeMoney()
 var attackRunnable = AttackRunnable()
 
-var taxTerm = (tax*Bukkit.getOnlinePlayers().size/13+1).toDouble()
+var attack = Attack()
+var attacking = false
+
+lateinit var dst: mcSociety
+val inst = lazy { dst }
+
+var playerHeads: ArrayList<ItemStack> = arrayListOf()
+
+fun setplayerHeads(){
+    playerHeads.clear()
+
+    for (i in Bukkit.getOnlinePlayers()) {
+        val playerHead = ItemStack(Material.PLAYER_HEAD)
+        val meta = playerHead.itemMeta
+        if (meta is SkullMeta) {
+            meta.owningPlayer = i
+            playerHead.itemMeta = meta
+        }
+        playerHeads.add(playerHead)
+    }
+}
+
+var taxTerm = (tax*Bukkit.getOnlinePlayers().size/20+1).toDouble()
 
 val prisonTerm: Lazy<Objective?> = lazy {
     if (Bukkit.getScoreboardManager().mainScoreboard.getObjective("prisonTerm") == null){
@@ -146,6 +170,8 @@ fun gameEnd(){
     var winner: MutableMap<Player, Int> = mutableMapOf(Bukkit.getOnlinePlayers().first()
             to sum)
 
+    attack.resetNums()
+
     for (i in Bukkit.getOnlinePlayers()){
         i.removeScoreboardTag("leader")
         i.removeScoreboardTag("prison")
@@ -211,6 +237,8 @@ fun revolution(player: Player){
         !revolutionTeam.value!!.entries.contains(it.name) && !leaderTeam.value!!.entries.contains(it.name)
                 && !it.scoreboardTags.contains("prison")
     })
+
+    Bukkit.getWorld("world")!!.setGameRule(GameRule.KEEP_INVENTORY, false)
 
     Windows.REVOLUTION.run(array)
     Windows.REVOLUTION.after()

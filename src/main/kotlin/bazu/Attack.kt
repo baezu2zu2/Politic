@@ -1,17 +1,18 @@
 package bazu
 
+import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.TextColor
 import org.bukkit.*
 import org.bukkit.entity.Entity
 import org.bukkit.entity.EntityType
+import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
+import org.bukkit.event.entity.CreatureSpawnEvent
 import org.bukkit.inventory.ItemStack
+import org.bukkit.potion.PotionEffectType
 import org.bukkit.scheduler.BukkitRunnable
 import java.util.*
-
-var attack = Attack()
-var attacking = false
 
 class Attack {
     var difficulty = 0
@@ -41,12 +42,14 @@ class Attack {
 
     val fightingPlayer = arrayListOf<Player>()
 
-    fun spawnMob(vararg loc: Location, multy: Int = 1){
+    fun spawnMob(vararg loc: Location, multy: Double = 1.0){
         for (monsterEntry in attack.difficultyEntity[attack.difficulty]) {
-            for (i in 1..monsterEntry.value*multy) {
-                val entity = Bukkit.getWorld("world")!!.spawnEntity(loc.random(), monsterEntry.key)
+            for (i in 0 until (monsterEntry.value*multy).toInt()) {
+                val entity = Bukkit.getWorld("world")!!.spawnEntity(loc.random(), monsterEntry.key, CreatureSpawnEvent.SpawnReason.CUSTOM)
 
-                entity.customName = "우민"
+                if (entity is LivingEntity) {
+                    entity.removeWhenFarAway = false
+                }
 
                 attack.spawnedEntity.add(entity)
             }
@@ -57,6 +60,7 @@ class Attack {
         attack.spawnedEntity.clear()
         attack.fightingPlayer.clear()
         attack.difficulty = 0
+        attacking = false
     }
 
 
@@ -70,6 +74,8 @@ class Attack {
 
         class AttackLater: BukkitRunnable(){
             override fun run() {
+                Bukkit.broadcast(Component.text("우민들이 도착했습니다!", TextColor.color(0xff, 0xff, 0xff)))
+
                 spawnMob(Location(Bukkit.getWorld("world"), 70.5, 64.0, 0.5)
                     , Location(Bukkit.getWorld("world"), 1.5, 64.0, 46.5))
 
@@ -80,7 +86,6 @@ class Attack {
 
                             if (attack.fightingPlayer.filter { it.gameMode != GameMode.SPECTATOR }.isEmpty()) {
                                 Bukkit.broadcast(Component.text("우민들의 침략이 성공으로 끝났습니다.."))
-                                if (attack.difficulty < 0) attack.difficulty--
                                 for (i in Bukkit.getOnlinePlayers())
                                     for (j in 0 until i.inventory.size)
                                         if (Random().nextInt(20) == 0)
@@ -89,12 +94,14 @@ class Attack {
 
                             else if(attack.spawnedEntity.filter{ !it.isDead }.isEmpty()){
                                 Bukkit.broadcast(Component.text("우민들의 침략이 실패로 끝났습니다!"))
-                                if (attack.difficulty > attack.difficultyEntity.size) attack.difficulty++
                             }
+
+                            if (attack.difficulty < attack.difficultyEntity.size) attack.difficulty++
 
 
                             for (i in Bukkit.getOnlinePlayers()){
                                 i.gameMode = GameMode.ADVENTURE
+                                i.removePotionEffect(PotionEffectType.BAD_OMEN)
                             }
                             attack.spawnedEntity.clear()
                             attack.fightingPlayer.clear()
@@ -113,58 +120,65 @@ class Attack {
 
     fun counterAttack(){
 
+        if (attack.difficulty <= 3) {
+            leader!!.sendMessage(Component.text("우민들을 공격할 명분이 없습니다.. " +
+                    "우민들이 4번 이상 침략해야 우민들을 공격할 수 있습니다."))
+
+            return
+        }
+
+        Bukkit.broadcast(
+            Component.text("리더가 우민들에게 선전포고를 했습니다! 1분 뒤에 리더와 리더 주변의 플레이어가 우민마을을 공격하러 떠납니다!")
+        )
+
+        attacking = true
+
         class counterAttackLater: BukkitRunnable(){
             override fun run() {
-                if (attack.difficulty > 3) {
-                    attack.fightingPlayer.addAll(
-                        leader!!.getNearbyEntities(3.0, 3.0, 3.0).filter{ it is Player } as List<Player>
-                    )
+                attack.fightingPlayer.addAll(
+                    leader!!.getNearbyEntities(3.0, 3.0, 3.0).filter{ it is Player } as List<Player>
+                )
 
-                    attack.fightingPlayer.add(leader!!)
+                attack.fightingPlayer.add(leader!!)
 
-                    for (i in attack.fightingPlayer)
-                        i.teleport(Location(Bukkit.getWorld("world"), -18.5, 64.0, 208.5))
+                for (i in attack.fightingPlayer)
+                    i.teleport(Location(Bukkit.getWorld("world"), -18.5, 64.0, 208.5))
 
-                    spawnMob(Location(Bukkit.getWorld("world"), -18.5, 64.0, 235.5)
-                        , Location(Bukkit.getWorld("world"), -18.5, 64.0, 225.5)
-                        , Location(Bukkit.getWorld("world"), -18.5, 64.0, 252.5), multy = 2)
+                spawnMob(Location(Bukkit.getWorld("world"), -18.5, 64.0, 235.5)
+                    , Location(Bukkit.getWorld("world"), -18.5, 64.0, 225.5)
+                    , Location(Bukkit.getWorld("world"), -18.5, 64.0, 252.5), multy = 1.5)
 
-                    attacking = true
+                class AttackResult: BukkitRunnable(){
+                    override fun run() {
+                        if (attack.fightingPlayer.filter { it.gameMode != GameMode.SPECTATOR }.isEmpty()
+                            || attack.spawnedEntity.filter{ !it.isDead }.isEmpty()){
 
-                    class AttackResult: BukkitRunnable(){
-                        override fun run() {
-                            if (attack.fightingPlayer.filter { it.gameMode != GameMode.SPECTATOR }.isEmpty()
-                                || attack.spawnedEntity.filter{ !it.isDead }.isEmpty()){
+                            if (attack.fightingPlayer.filter { it.gameMode != GameMode.SPECTATOR }.isEmpty()) {
+                                Bukkit.broadcast(Component.text("우민마을 침략이 실패로 끝났습니다.."))
+                            } else if(attack.spawnedEntity.filter{ !it.isDead }.isEmpty()){
+                                Bukkit.broadcast(Component.text("우민마을 침략이 성공으로 끝났습니다!"))
 
-                                if (attack.fightingPlayer.filter { it.gameMode != GameMode.SPECTATOR }.isEmpty()) {
-                                    Bukkit.broadcast(Component.text("우민마을 침략이 실패로 끝났습니다.."))
-                                } else if(attack.spawnedEntity.filter{ !it.isDead }.isEmpty()){
-                                    Bukkit.broadcast(Component.text("우민마을 침략이 성공으로 끝났습니다!"))
+                                if (attack.difficulty > 0) attack.difficulty--
 
-                                    if (attack.difficulty < attack.difficultyEntity.size-1) attack.difficulty+=2
-                                    if (attack.difficulty == attack.difficultyEntity.size-1)
-                                        attack.difficulty = attack.difficultyEntity.size
-
-                                    treasury.value!!.addItem(ItemStack(Material.EMERALD, 64)
-                                        , ItemStack(Material.EMERALD, 64))
-                                }
-
-
-                                for (i in Bukkit.getOnlinePlayers()){
-                                    i.gameMode = GameMode.ADVENTURE
-                                    for (j in 0 until i.inventory.size)
-                                        if (Random().nextInt(20) == 0) i.inventory.setItem(j, ItemStack(Material.AIR))
-                                }
-                                attack.spawnedEntity.clear()
-                                attack.fightingPlayer.clear()
-                                this.cancel()
-                                attacking = false
+                                treasury.value!!.addItem(ItemStack(Material.EMERALD, 64)
+                                    , ItemStack(Material.EMERALD, 64))
                             }
+
+
+                            for (i in Bukkit.getOnlinePlayers()){
+                                i.gameMode = GameMode.ADVENTURE
+                                i.teleport(Location(Bukkit.getWorld("world"), 1.5, 64.0, 0.5))
+                                i.removePotionEffect(PotionEffectType.BAD_OMEN)
+                            }
+                            attack.spawnedEntity.clear()
+                            attack.fightingPlayer.clear()
+                            this.cancel()
+                            attacking = false
                         }
                     }
-
-                    AttackResult().runTaskTimer(inst.value, 0, 1)
                 }
+
+                AttackResult().runTaskTimer(inst.value, 0, 1)
             }
         }
 
