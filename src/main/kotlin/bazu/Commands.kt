@@ -50,7 +50,7 @@ enum class CommandsLabel(val label: String, val needLeader: Boolean = true): Com
         override fun run(sender: CommandSender, args: Array<out String>) {
             if (args.size == 1){
                 if (args[0].equals("start", ignoreCase = true)) gameStart()
-                else if (args[0].equals("end", ignoreCase = true)) gameEnd()
+                else if (args[0].equals("end", ignoreCase = true) && leader != null) gameEnd()
             }
         }
     },
@@ -63,7 +63,7 @@ enum class CommandsLabel(val label: String, val needLeader: Boolean = true): Com
         override fun run(sender: CommandSender, args: Array<out String>) {
             sender.sendMessage("현재 지도자: ${leader!!.name}")
             sender.sendMessage("현재 세금: ${tax}")
-            sender.sendMessage("현재 세금 기간: ${taxTerm}")
+            sender.sendMessage("현재 세금 기간: ${taxTerm}분")
             sender.sendMessage("현재 체제: ${system!!.label}")
         }
     },
@@ -72,7 +72,7 @@ enum class CommandsLabel(val label: String, val needLeader: Boolean = true): Com
             if (gui.unacceptedPolicy != null && sender is Player && sender == leader!!) {
                 gui.subject = gui.unacceptedPolicy!!.item.displayName()
                 val array = arrayListOf<Player>()
-                array.addAll(Bukkit.getOnlinePlayers().filter { it.scoreboardTags.contains("conference") })
+                array.addAll(players.filter { it.scoreboardTags.contains("conference") })
 
                 Windows.YES_OR_NO_VOTE.run(array)
             }
@@ -81,7 +81,7 @@ enum class CommandsLabel(val label: String, val needLeader: Boolean = true): Com
     FINISH_MEETING("finishMeeting"){
         override fun run(sender: CommandSender, args: Array<out String>) {
             if (sender is Player && sender == leader!!){
-                for (i in Bukkit.getOnlinePlayers()) i.removeScoreboardTag("conference")
+                for (i in players) i.removeScoreboardTag("conference")
                 Bukkit.broadcast(Component.text("회의가 취소되었습니다!"))
             }
         }
@@ -89,7 +89,6 @@ enum class CommandsLabel(val label: String, val needLeader: Boolean = true): Com
     REVOLUTION("revolution"){
         override fun run(sender: CommandSender, args: Array<out String>) {
             if (sender is Player && !sender.scoreboardTags.contains("prison") && sender != leader!!){
-                sender.inventory.itemInMainHand.amount -= 32
                 revolution(sender)
             }
         }

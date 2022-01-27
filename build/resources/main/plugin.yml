@@ -1,0 +1,22 @@
+name: mcSociety
+main: bazu.mcSociety
+version: 1.0
+author: bazu
+api-version: 1.17
+commands:
+  game:
+    permission: op
+  leaderRight:
+    permission: op
+  countryInfo:
+
+  vote:
+
+  finishMeeting:
+
+  revolution:
+
+  n:
+
+  callAttack:
+    permission: op

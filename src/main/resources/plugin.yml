@@ -3,6 +3,8 @@ main: bazu.mcSociety
 version: 1.0
 author: bazu
 api-version: 1.17
+depend: [Shopkeepers]
+
 commands:
   game:
     permission: op

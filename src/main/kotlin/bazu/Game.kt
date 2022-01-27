@@ -4,9 +4,7 @@ package bazu
 
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
-import net.kyori.adventure.text.format.TextColor
 import org.bukkit.*
-import org.bukkit.block.Block
 import org.bukkit.block.Chest
 import org.bukkit.entity.Player
 import org.bukkit.inventory.Inventory
@@ -15,8 +13,8 @@ import org.bukkit.inventory.meta.SkullMeta
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scoreboard.Objective
 import org.bukkit.scoreboard.Team
-import kotlin.random.Random
 
+val players = mutableListOf<Player>()
 var system: System? = null
 var tax = 10
 var leader: Player? = null
@@ -25,12 +23,12 @@ var YesNoVote = hashMapOf<Boolean, Int>(false to 0, true to 0)
 var voted = 0
 val gui = GUI()
 var taxRunnable = TaxRunnable()
-var voteRunnable = VoteRunnable()
 var changeMoney = ChangeMoney()
 var attackRunnable = AttackRunnable()
 
 var attack = Attack()
 var attacking = false
+var noAttackMore = false
 
 lateinit var dst: mcSociety
 val inst = lazy { dst }
@@ -40,7 +38,7 @@ var playerHeads: ArrayList<ItemStack> = arrayListOf()
 fun setplayerHeads(){
     playerHeads.clear()
 
-    for (i in Bukkit.getOnlinePlayers()) {
+    for (i in players) {
         val playerHead = ItemStack(Material.PLAYER_HEAD)
         val meta = playerHead.itemMeta
         if (meta is SkullMeta) {
@@ -51,7 +49,7 @@ fun setplayerHeads(){
     }
 }
 
-var taxTerm = (tax*Bukkit.getOnlinePlayers().size/20+1).toDouble()
+var taxTerm = 0.0
 
 val prisonTerm: Lazy<Objective?> = lazy {
     if (Bukkit.getScoreboardManager().mainScoreboard.getObjective("prisonTerm") == null){
@@ -95,13 +93,20 @@ val treasury: Lazy<Inventory?> = lazy {
     }
 }
 
-val money = hashMapOf(ItemStack(Material.DARK_OAK_LOG, 15) to 3,
-    ItemStack(Material.COBBLESTONE, 15) to 4, ItemStack(Material.COD, 1) to 1,
-    ItemStack(Material.SALMON, 1) to 3, ItemStack(Material.TROPICAL_FISH, 1) to 5,
-    ItemStack(Material.PUFFERFISH, 1) to 4, ItemStack(Material.NAUTILUS_SHELL, 1) to 4,
-    ItemStack(Material.NAME_TAG, 1) to 4)
+val money = hashMapOf(ItemStack(Material.DARK_OAK_LOG, 15) to 8,
+    ItemStack(Material.COBBLESTONE, 15) to 10, ItemStack(Material.COD, 1) to 7,
+    ItemStack(Material.SALMON, 1) to 12, ItemStack(Material.TROPICAL_FISH, 1) to 17,
+    ItemStack(Material.PUFFERFISH, 1) to 13, ItemStack(Material.NAUTILUS_SHELL, 1) to 13,
+    ItemStack(Material.NAME_TAG, 1) to 13, ItemStack(Material.ROTTEN_FLESH, 1) to 4,
+    ItemStack(Material.BONE, 1) to 5, ItemStack(Material.SPIDER_EYE, 1) to 5,
+    ItemStack(Material.STRING, 1) to 5, ItemStack(Material.MELON_SLICE, 1) to 7,
+    ItemStack(Material.PUMPKIN, 1) to 7, ItemStack(Material.SWEET_BERRIES, 1) to 7,
+    ItemStack(Material.CARROT, 1) to 7, ItemStack(Material.POTATO, 1) to 7,
+    ItemStack(Material.BEETROOT, 1) to 7, ItemStack(Material.WHEAT, 1) to 7,
+    ItemStack(Material.WHITE_WOOL, 1) to 5, ItemStack(Material.EGG, 1) to 12,)
 
 var revolutioning = false
+
 
 fun initalTeams(){
     revolutionTeam.value!!.setAllowFriendlyFire(false)
@@ -112,7 +117,7 @@ fun initalTeams(){
 }
 
 fun resetVoteNum(){
-    for (i in Bukkit.getOnlinePlayers()){
+    for (i in players){
         voteNum[i] = 0
     }
     voted = 0
@@ -120,35 +125,51 @@ fun resetVoteNum(){
     YesNoVote.put(false, 0)
 }
 
-fun gameStart(){
-
+fun addRunnables(){
     taxRunnable = TaxRunnable()
-    voteRunnable = VoteRunnable()
     changeMoney = ChangeMoney()
     attackRunnable = AttackRunnable()
+}
 
-    for (i in Bukkit.getOnlinePlayers()){
+fun playersSetting(){
+    for (i in players){
         voteNum.put(i, 0)
         i.inventory.clear()
         i.gameMode = GameMode.ADVENTURE
         i.teleport(Location(Bukkit.getWorld("world"), 1.5, 64.0, 0.5))
         i.sendExperienceChange(0.0f, 0)
+        i.foodLevel = 20
     }
+}
+
+fun gameStart(){
+    players.addAll(Bukkit.getOnlinePlayers())
 
     setplayerHeads()
     initalTeams()
     resetVoteNum()
     attack.resetNums()
+    bazu.taxTerm = (tax*players.size/20+1).toDouble()
 
-    Bukkit.broadcast(Component.text("세금은 이제부터 ${taxTerm}분마다 걷어집니다!"))
+    playersSetting()
+
+    addRunnables()
+
+    gui.changeTax(10)
+
+
 
     taxRunnable.runTaskTimer(inst.value, (taxTerm*20*60).toLong(), (taxTerm*20*60).toLong())
     changeMoney.runTaskTimer(inst.value, 0, 10)
     attackRunnable.runTaskTimer(inst.value, (20*60*4).toLong(), (20*60*3).toLong())
 
-    system = System.DICTORSHIP
-    Bukkit.broadcast(Component.text("오늘도 독재사회에서 하루를 살아갑니다."))
-    setLeaderWithMessage(Bukkit.getOnlinePlayers().random())
+    system = System.values().random()
+    Bukkit.broadcast(Component.text("이 국가의 체제는 ${system!!.label}입니다."))
+    val list = arrayListOf<Player>()
+
+    list.addAll(players)
+
+    setLeaderWithMessage(players.random())
 
     leader?.addScoreboardTag("leader")
 }
@@ -162,39 +183,48 @@ fun gameEnd(){
     voted = 0
     playerHeads.clear()
 
-    var sum = 0
-    for (i in Bukkit.getOnlinePlayers().first().inventory.filter {it != null &&
-        it.type == Material.EMERALD
-    }) sum += i.amount
-
-    var winner: MutableMap<Player, Int> = mutableMapOf(Bukkit.getOnlinePlayers().first()
-            to sum)
-
     attack.resetNums()
 
-    for (i in Bukkit.getOnlinePlayers()){
+    for (i in players){
         i.removeScoreboardTag("leader")
         i.removeScoreboardTag("prison")
         i.removeScoreboardTag("conference")
+    }
 
+    getWinner()
+
+    Bukkit.getScheduler().cancelTasks(inst.value)
+
+    players.clear()
+}
+
+fun getWinner(){
+
+    var sum = 0
+    for (i in players.first().inventory.filter {it != null &&
+            it.type == Material.EMERALD
+    }) sum += i.amount
+
+    var winner: MutableMap<Player, Int> = mutableMapOf(players.first()
+            to sum)
+
+    for (i in 1 until players.size){
         sum = 0
-        for (j in i.inventory.filter { it != null && it.type == Material.EMERALD }){
+        for (j in players[i].inventory.filter { it != null && it.type == Material.EMERALD }){
             sum += j.amount
         }
         if (winner.values.first() < sum){
-            winner.clear()
-            winner = mutableMapOf(i
+            winner = mutableMapOf(players[i]
                     to sum)
         }else if (winner.values.first() == sum){
-            winner = mutableMapOf(i
-                    to sum)
+            winner[players[i]] = sum
         }
     }
+
+
     Bukkit.broadcast(Component.text("게임이 끝났습니다!"))
     Bukkit.broadcast(Component.text("우승자는..."))
     for (i in winner)Bukkit.broadcast(Component.text("${i.key.name}님이 ${i.value}개의 에메랄드로 1등 입니다!"))
-
-    Bukkit.getScheduler().cancelTasks(inst.value)
 }
 
 fun setLeaderWithMessage(player: Player){
@@ -206,7 +236,6 @@ fun setLeaderWithMessage(player: Player){
 
 enum class System(val label: String){
     DICTORSHIP("독재"),
-    DEMOCRACY("민주주의")
 }
 
 fun genMeta(item: ItemStack, displayName: Component, vararg lore: Component): ItemStack{
@@ -224,7 +253,7 @@ fun genMeta(item: ItemStack, displayName: Component, vararg lore: Component): It
 
 fun revolution(player: Player){
     leader!!.removeScoreboardTag("leader")
-    if (player != leader!!){
+    if (player != leader!!) {
         revolutionTeam.value!!.addEntry(player.name)
         leaderTeam.value!!.addEntry(leader!!.name)
     }
@@ -233,16 +262,28 @@ fun revolution(player: Player){
     player.addScoreboardTag("revolutionFirst")
 
     val array = arrayListOf<Player>()
-    array.addAll(Bukkit.getOnlinePlayers().filter {
+    array.addAll(players.filter {
         !revolutionTeam.value!!.entries.contains(it.name) && !leaderTeam.value!!.entries.contains(it.name)
                 && !it.scoreboardTags.contains("prison")
     })
+    for (i in players.filter { it.scoreboardTags.contains("prison") }) {
+        midTeam.value!!.addEntry(i.name)
+    }
 
     Bukkit.getWorld("world")!!.setGameRule(GameRule.KEEP_INVENTORY, false)
 
     Windows.REVOLUTION.run(array)
     Windows.REVOLUTION.after()
 }
+
+fun makeAdventure(tpAllPlayer: Boolean){
+    for (i in players){
+        if (i.gameMode == GameMode.SPECTATOR || tpAllPlayer) i.teleport(Location(Bukkit.getWorld("world"), 1.5, 64.0, 0.5))
+        i.gameMode = GameMode.ADVENTURE
+    }
+}
+
+
 
 enum class SucceedProperty{
     SUCCEED, NOT_YET, FAILED
@@ -252,7 +293,7 @@ class TaxRunnable: BukkitRunnable(){
     override fun run() {
         if (!revolutioning) {
             Bukkit.broadcast(Component.text("세금을 징수하겠습니다!"))
-            for (i in Bukkit.getOnlinePlayers().filter { it != leader!! && !it.scoreboardTags.contains("prison") }) {
+            for (i in players.filter {it != leader!! && !it.scoreboardTags.contains("prison") }) {
                 val failedItem = i.inventory.removeItemAnySlot(ItemStack(Material.EMERALD, tax))
                 if (failedItem[0] != null) {
                     treasury.value!!.addItem(ItemStack(Material.EMERALD, tax - failedItem[0]!!.amount))
@@ -265,34 +306,13 @@ class TaxRunnable: BukkitRunnable(){
     }
 }
 
-class VoteRunnable: BukkitRunnable(){
-    override fun run() {
-        Bukkit.broadcast(Component.text("3분 후 투표가 시작됩니다! 선거유세를 해 주세요!"))
-
-        class RealVote: BukkitRunnable(){
-            override fun run() {
-                if (system == System.DEMOCRACY && !revolutioning) {
-                    val players = arrayListOf<Player>()
-                    players.addAll(Bukkit.getOnlinePlayers())
-                    Windows.LEADER_VOTE.run(players)
-                }
-            }
-
-        }
-
-        val realVote = RealVote()
-
-        realVote.runTaskLater(inst.value, (3*20*60).toLong())
-    }
-}
-
 class ChangeMoney: BukkitRunnable(){
     override fun run() {
-        for (player in Bukkit.getOnlinePlayers()) {
+        for (player in players) {
             for (i in money) {
                 var amount = 0
                 for (j in player.inventory) {
-                    if ((j != null && i.key.type == j.type)) {
+                    if ((j != null && i.key.type == j.type && i.key.itemMeta == j.itemMeta)) {
                         amount += j.amount
                     }
                 }

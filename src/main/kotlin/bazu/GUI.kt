@@ -7,7 +7,6 @@ import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.inventory.InventoryClickEvent
-import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta
 import org.bukkit.scheduler.BukkitRunnable
@@ -38,7 +37,7 @@ class GUI: Listener {
             val a = voteNum[(i.itemMeta as SkullMeta).owningPlayer as Player]!!
             voteNum[(i.itemMeta as SkullMeta).owningPlayer as Player] = a+1
 
-            if (voted == Bukkit.getOnlinePlayers().size-1){
+            if (voted == players.size-1){
                 val max: MutableMap<Player, Int> = mutableMapOf(voteNum.entries.first().key to voteNum.entries.first().value)
 
                 for (j in voteNum){
@@ -53,7 +52,7 @@ class GUI: Listener {
                 }
                 setLeaderWithMessage(max.entries.random().key)
                 resetVoteNum()
-            }else if (voted < Bukkit.getOnlinePlayers().size-1){
+            }else if (voted < players.size-1){
                 voted++
                 Bukkit.broadcast(Component.text("${voted}명 투표함!"))
             }
@@ -68,7 +67,7 @@ class GUI: Listener {
 
         YesNoVote[gui.yesNoBool[item]!!] = a+1
 
-        if (voted == Bukkit.getOnlinePlayers().filter { it.scoreboardTags.contains("conference") }.size-1) {
+        if (voted == players.filter { it.scoreboardTags.contains("conference") }.size-1) {
             var max: MutableMap.MutableEntry<Boolean, Int> = YesNoVote.entries.first()
             for (i in YesNoVote){
                 if (i.value > max.value){
@@ -84,7 +83,7 @@ class GUI: Listener {
             }
             resetVoteNum()
 
-            for (i in Bukkit.getOnlinePlayers()) i.scoreboardTags.remove("conference")
+            for (i in players) i.scoreboardTags.remove("conference")
 
         }
         else{
@@ -102,7 +101,7 @@ class GUI: Listener {
         if (failedItem[0] != null){
             treasury.value!!.addItem(ItemStack(Material.EMERALD, cnt-failedItem[0]!!.amount))
             if (cnt-failedItem[0]!!.amount > 0) {
-                leader!!.sendMessage(Component.text("${player.name}에게 ${cnt}만큼의 에메랄드를 뺏었습니다."))
+                leader!!.sendMessage(Component.text("${player.name}에게 ${cnt - failedItem[0]!!.amount}만큼의 에메랄드를 뺏었습니다."))
                 player.sendMessage(Component.text("무언가 없어진 듯한 기분이 듭니다."))
             }else{
                 leader!!.sendMessage(Component.text("돈이 없었군요.."))
@@ -144,17 +143,8 @@ class GUI: Listener {
         Bukkit.broadcast(Component.text("세금이${tax}에서 ${newTax}로 변경되었습니다!"))
         tax = newTax
 
-        taxRunnable.cancel()
-
-        taxRunnable = TaxRunnable()
-        taxTerm = (tax*Bukkit.getOnlinePlayers().size/20+1).toDouble()
-
         Bukkit.broadcast(Component.text("세금은 이제부터 ${taxTerm}분마다 걷어집니다!"))
-        taxRunnable.runTaskTimer(inst.value, (taxTerm*20*60).toLong(), (taxTerm*20*60).toLong())
 
-
-        //3 : 10 == taxTerm : newTax
-        //taxTerm = newTax*10/3
     }
 
     fun choicePerson(player: Player){
@@ -255,7 +245,7 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
         }
 
         override fun run() {
-            var bool = true
+
             gui.choicePerson(leader!!)
             class isPlayerChoiced: BukkitRunnable() {
                 override fun run() {
@@ -286,7 +276,6 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
         }
 
         override fun run() {
-            var bool = true
 
             gui.choicePerson(leader!!)
             class isPlayerChoiced: BukkitRunnable(){
@@ -299,10 +288,10 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
                         class isNumChoiced: BukkitRunnable(){
                             override fun run() {
                                 if (gui.finished){
-                                    bool = gui.addPoint(gui.choosedPlayer!!, gui.choosedNumber)
                                     this.cancel()
                                     gui.finished = false
                                     gui.decisionSucceed = SucceedProperty.SUCCEED
+                                    gui.addPoint(gui.choosedPlayer!!, gui.choosedNumber)
                                 }else if (leader!!.openInventory.title() != Component.text("숫자 선택")){
                                     this.cancel()
                                     gui.decisionSucceed = SucceedProperty.FAILED
@@ -329,7 +318,6 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
         }
 
         override fun run() {
-            var bool = true
 
             gui.choicePerson(leader!!)
             class isPlayerChoiced: BukkitRunnable(){
@@ -342,10 +330,10 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
                         class isNumChoiced: BukkitRunnable(){
                             override fun run() {
                                 if (gui.finished){
-                                    bool = gui.removePoint(gui.choosedPlayer!!, gui.choosedNumber)
                                     this.cancel()
                                     gui.finished = false
                                     gui.decisionSucceed = SucceedProperty.SUCCEED
+                                    gui.removePoint(gui.choosedPlayer!!, gui.choosedNumber)
                                 }else if (leader!!.openInventory.title() != Component.text("숫자 선택")){
                                     this.cancel()
                                     gui.decisionSucceed = SucceedProperty.FAILED
@@ -373,7 +361,7 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
 
         override fun run() {
             gui.choicePerson(leader!!)
-            var bool = true
+
             class isPlayerChoiced: BukkitRunnable(){
                 override fun run() {
                     if (gui.finished){
@@ -384,10 +372,12 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
                         class isNumChoiced: BukkitRunnable(){
                             override fun run() {
                                 if (gui.finished){
-                                    gui.sendPrision(gui.choosedPlayer!!, gui.choosedNumber)
-                                    this.cancel()
-                                    gui.finished = false
-                                    gui.decisionSucceed = SucceedProperty.SUCCEED
+                                    if (gui.choosedPlayer != leader!!) {
+                                        gui.sendPrision(gui.choosedPlayer!!, gui.choosedNumber)
+                                        this.cancel()
+                                        gui.finished = false
+                                        gui.decisionSucceed = SucceedProperty.SUCCEED
+                                    }
                                 }else if (leader!!.openInventory.title() != Component.text("숫자 선택")){
                                     this.cancel()
                                     gui.decisionSucceed = SucceedProperty.FAILED
@@ -417,7 +407,7 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
 
         override fun run() {
             gui.choiceNumber(leader!!)
-            var bool = true
+
             class isNumberChoiced: BukkitRunnable(){
                 override fun run() {
                     if (gui.finished){
@@ -425,6 +415,9 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
                         gui.finished = false
 
                         gui.changeTax(gui.choosedNumber)
+
+                        taxRunnable = TaxRunnable()
+                        taxRunnable.runTaskTimer(inst.value, (taxTerm*20*60).toLong(), (taxTerm*20*60).toLong())
                         gui.decisionSucceed = SucceedProperty.SUCCEED
                     }else if (leader!!.openInventory.title() != Component.text("숫자 선택")){
                         this.cancel()
@@ -434,28 +427,6 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
             }
 
             isNumberChoiced().runTaskTimer(inst.value, 0, 1)
-        }
-    },
-    CHANGE_SYSTEM(ItemStack(Material.RED_BANNER), true){
-        init {
-            item = genMeta(item, Component.text("체제 변경", TextColor.color(0xff, 0xff, 0x0))
-                    , Component.text("민주주의나 독재로 체제를 바꾸세요!")
-                    , Component.text("조심하세요. 담신의 시대가 끝날 수 있습니다!")
-                    , Component.text("체제가 민주주의일 경우 민중의 과반수의 동의가 필요합니다."))
-        }
-
-        override fun run() {
-            if (system == System.DICTORSHIP){
-                system = System.DEMOCRACY
-                Bukkit.broadcast(Component.text("체제가 민주주의로 바뀌었습니다."))
-                voteRunnable.runTaskTimer(inst.value, 0, (9*20*60).toLong())
-            }
-            else if (system == System.DEMOCRACY){
-                system = System.DICTORSHIP
-                Bukkit.broadcast(Component.text("체제가 독재로 바뀌었습니다."))
-                voteRunnable.cancel()
-            }
-            gui.decisionSucceed = SucceedProperty.SUCCEED
         }
     },
     OPEN_TREASURY(ItemStack(Material.CHEST), false){
@@ -530,7 +501,7 @@ enum class Windows(val label: Component, var items: ArrayList<ItemStack>, val no
         , arrayListOf(genMeta(ItemStack(Material.GREEN_STAINED_GLASS_PANE), Component.text("예")),
             genMeta(ItemStack(Material.RED_STAINED_GLASS_PANE), Component.text("아니오"))), true, 9) {
         override fun run(player: ArrayList<Player>) {
-            for (i in Bukkit.getOnlinePlayers()) {
+            for (i in players) {
                 if (i.scoreboardTags.contains("conference")) {
                     val voteInv = Bukkit.createInventory(i, 9, this.label)
 
@@ -549,7 +520,7 @@ enum class Windows(val label: Component, var items: ArrayList<ItemStack>, val no
             return gui.yesOrNoVoteClick(item)
         }
     },
-    LEADER_DECISION(Component.text("지도자의 결정"), arrayListOf<ItemStack>(), false, 9) {
+    LEADER_DECISION(Component.text("지도자의 결정"), arrayListOf<ItemStack>(), false, Right.values().size*2) {
         init{
             for (i in Right.values()){
                 this.items.add(i.item)
@@ -586,7 +557,7 @@ enum class Windows(val label: Component, var items: ArrayList<ItemStack>, val no
                             gui.unacceptedPolicy = i
 
                             val array = arrayListOf<Player>()
-                            array.addAll(Bukkit.getOnlinePlayers().filter { !it.scoreboardTags.contains("prison") })
+                            array.addAll(players.filter { !it.scoreboardTags.contains("prison") })
 
                             Windows.JOIN_CONFERENCE.run(array)
                         }else{
@@ -631,7 +602,7 @@ enum class Windows(val label: Component, var items: ArrayList<ItemStack>, val no
         genMeta(ItemStack(Material.GRAY_BANNER), Component.text("중립진영 참여"))
     ), true, 9) {
         override fun run(player: ArrayList<Player>) {
-            val revPlayer = Bukkit.getOnlinePlayers().find { it.scoreboardTags.contains("revolutionFirst") }
+            val revPlayer = players.find { it.scoreboardTags.contains("revolutionFirst") }
 
             for (i in player) {
                 val inv = Bukkit.createInventory(i, 9, this.label)
@@ -645,13 +616,15 @@ enum class Windows(val label: Component, var items: ArrayList<ItemStack>, val no
                     , Component.text("아니면 둘 다 선택하지 않을 수도 있죠")))
 
                 i.openInventory(inv)
+
+
             }
         }
 
         override fun after() {
             class revolutionStart: BukkitRunnable() {
                 override fun run() {
-                    if (Bukkit.getOnlinePlayers().filter
+                    if (players.filter
                     {
                         !revolutionTeam.value!!.entries.contains(it.name)
                                 && !leaderTeam.value!!.entries.contains(it.name)
@@ -673,9 +646,9 @@ enum class Windows(val label: Component, var items: ArrayList<ItemStack>, val no
                                 if (revolutionTeam.value!!.entries.isEmpty()) {
                                     revolutioning = false
 
-                                    for (i in Bukkit.getOnlinePlayers()) {
-                                        i.gameMode = GameMode.ADVENTURE
-                                    }
+
+                                    makeAdventure(false)
+
                                     for (i in revolutionTeam.value!!.entries) revolutionTeam.value!!.removeEntry(i)
                                     for (i in leaderTeam.value!!.entries) leaderTeam.value!!.removeEntry(i)
                                     Bukkit.broadcast(Component.text("국가 진영이 승리했습니다!", TextColor.color(0xff, 0x00, 0x00)))
@@ -684,12 +657,12 @@ enum class Windows(val label: Component, var items: ArrayList<ItemStack>, val no
                                     this.cancel()
                                 } else if (leaderTeam.value!!.entries.isEmpty()) {
                                     revolutioning = false
-                                    setLeaderWithMessage(Bukkit.getOnlinePlayers().filter {
+                                    setLeaderWithMessage(players.filter {
                                         it.scoreboardTags.contains("revolutionFirst")
                                     }[0])
                                     leader!!.scoreboardTags.remove("revolutionFirst")
 
-                                    for (i in Bukkit.getOnlinePlayers()) {
+                                    for (i in players) {
                                         i.gameMode = GameMode.ADVENTURE
                                     }
                                     for (i in revolutionTeam.value!!.entries) revolutionTeam.value!!.removeEntry(i)
