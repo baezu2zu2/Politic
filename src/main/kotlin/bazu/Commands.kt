@@ -11,6 +11,7 @@ import org.bukkit.command.CommandSender
 import org.bukkit.command.TabCompleter
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.bukkit.scheduler.BukkitRunnable
 
 class Commands: CommandExecutor, TabCompleter {
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
@@ -37,8 +38,8 @@ class Commands: CommandExecutor, TabCompleter {
         val list = arrayListOf<String>()
 
         if (command.label.equals(CommandsLabel.GAME.label, ignoreCase = true)){
-            list.add("start")
-            list.add("end")
+            list.add("시작")
+            list.add("끝")
         }
 
         return list
@@ -46,11 +47,16 @@ class Commands: CommandExecutor, TabCompleter {
 }
 
 enum class CommandsLabel(val label: String, val needLeader: Boolean = true): CommandsLabelFun{
-    GAME("game", false){
+    GAME("게임", false){
         override fun run(sender: CommandSender, args: Array<out String>) {
-            if (args.size == 1){
-                if (args[0].equals("start", ignoreCase = true)) gameStart()
-                else if (args[0].equals("end", ignoreCase = true) && leader != null) gameEnd()
+            if (args.size >= 1){
+                if (args[0].equals("시작", ignoreCase = true) && args.size == 2){
+                    val goalTime = args[1].toIntOrNull()
+                    if (goalTime != null)
+                        gameStart(goalTime)
+
+                }
+                else if (args[0].equals("끝", ignoreCase = true) && leader != null) gameEnd()
             }
         }
     },
@@ -59,7 +65,7 @@ enum class CommandsLabel(val label: String, val needLeader: Boolean = true): Com
             Windows.LEADER_DECISION.run(arrayListOf(leader!!))
         }
     },
-    COUNTRY_INFO("countryInfo"){
+    COUNTRY_INFO("국가정보"){
         override fun run(sender: CommandSender, args: Array<out String>) {
             sender.sendMessage("현재 지도자: ${leader!!.name}")
             sender.sendMessage("현재 세금: ${tax}")
@@ -86,10 +92,26 @@ enum class CommandsLabel(val label: String, val needLeader: Boolean = true): Com
             }
         }
     },
-    REVOLUTION("revolution"){
+    REVOLUTION("혁명"){
         override fun run(sender: CommandSender, args: Array<out String>) {
             if (sender is Player && !sender.scoreboardTags.contains("prison") && sender != leader!!){
-                revolution(sender)
+                if (canRevolution) {
+                    revolution(sender)
+                    canRevolution = false
+                    revolutionTimer = 0
+
+                    object:BukkitRunnable(){
+                        override fun run() {
+                            revolutionTimer++
+                            if (revolutionTimer >= 60*2){
+                                canRevolution = true
+                                this.cancel()
+                            }
+                        }
+                    }.runTaskTimer(inst.value, 0, 20)
+                }else{
+                    sender.sendMessage("지금은 반란을 일으킬 수 없습니다! ${60*2-revolutionTimer}초 후부터 반란을 일으킬 수 있습니다!")
+                }
             }
         }
     },

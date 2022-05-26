@@ -75,16 +75,9 @@ class Attack {
             override fun run() {
                 attack.fightingPlayer.addAll(players)
                 attacking = true
-                Bukkit.broadcast(Component.text("우민들이 도착했습니다!", TextColor.color(0xff, 0xff, 0xff)))
+                Bukkit.broadcast(Component.text("우민들이 도착했습니다!", TextColor.color(0xff, 0x00, 0x00)))
 
                 spawnMob(Location(Bukkit.getWorld("world"), 1.5, 64.0, 0.5))
-
-
-                AttackResult("침략 방어에 성공했습니다!", "침략 방어에 실패했습니다..", false
-                    , failedResult = {
-                        for (i in players) for (j in i.inventory)
-                            if (j != null && Random().nextInt(10) < 3) j.type = Material.AIR
-                    }).runTaskTimer(inst.value, 0, 1)
             }
         }
 
@@ -93,9 +86,9 @@ class Attack {
 
     fun counterAttack(){
 
-        if (attack.difficulty <= 3) {
+        if (attack.difficulty <= 0) {
             leader!!.sendMessage(Component.text("우민들을 공격할 명분이 없습니다.. " +
-                    "우민들이 4번 이상 침략해야 우민들을 공격할 수 있습니다."))
+                    "우민들이 1번 이상 침략해야 우민들을 공격할 수 있습니다."))
 
             return
         }
@@ -122,12 +115,6 @@ class Attack {
                 spawnMob(Location(Bukkit.getWorld("world"), -18.5, 64.0, 235.5)
                     , Location(Bukkit.getWorld("world"), -18.5, 64.0, 225.5)
                     , Location(Bukkit.getWorld("world"), -18.5, 65.07, 252.5), multy = 1.5)
-
-                AttackResult("우민마을 침공에 성공했습니다!", "우민마을 침공에 실패했습니다..", true
-                    , {
-                    treasury.value!!.addItem(ItemStack(Material.EMERALD, 64)
-                        , ItemStack(Material.EMERALD, 64))
-                    }).runTaskTimer(inst.value, 0, 1)
             }
         }
 
@@ -143,34 +130,31 @@ class AttackRunnable: BukkitRunnable(){
     }
 }
 
-class AttackResult(val winMessage: String, val failedMessage: String, val tpAllPlayer: Boolean, val winResult: (()->Unit)?=null
-                   , val failedResult:(()->Unit)?=null): BukkitRunnable(){
-    override fun run() {
-        var end = true
+fun attackResult(winMessage: String, failedMessage: String, tpAllPlayer: Boolean, entityType: EntityType, winResult: (()->Unit)?=null
+                   , failedResult:(()->Unit)?=null){
+    var end = false
 
-        if (attack.fightingPlayer.filter { it.gameMode != GameMode.SPECTATOR }.isEmpty()) {
-            Bukkit.broadcast(Component.text(failedMessage))
-            if (failedResult != null) failedResult?.let { it() }
-            for (i in attack.spawnedEntity.filter{ !it.isDead })
-                i.remove()
-        } else if(attack.spawnedEntity.filter{ !it.isDead }.isEmpty()){
-            Bukkit.broadcast(Component.text(winMessage))
-            if (winResult != null) winResult?.let { it() }
-            if (attack.difficulty > 0) attack.difficulty--
-        }else{
-            end = false
+    if(entityType != EntityType.PLAYER && attack.spawnedEntity.filter{ !it.isDead }.size <= 1){
+        Bukkit.broadcast(Component.text(winMessage, TextColor.color(0x4b, 0x89, 0xdc)))
+        if (winResult != null) winResult?.let { it() }
+        end = true
+    }
+    else if (entityType == EntityType.PLAYER && attack.fightingPlayer.filter { it.gameMode != GameMode.SPECTATOR }.size <= 1) {
+        Bukkit.broadcast(Component.text(failedMessage, TextColor.color(0xf0, 0x56, 0x50)))
+        if (failedResult != null) failedResult?.let { it() }
+        for (i in attack.spawnedEntity.filter{ !it.isDead })
+            i.remove()
+        end = true
+    }
+    if (end) {
+        makeAdventure(tpAllPlayer)
+
+        attack.difficulty++
+        for (i in players) {
+            i.removePotionEffect(PotionEffectType.BAD_OMEN)
         }
-
-        if (end) {
-            makeAdventure(tpAllPlayer)
-
-            for (i in players) {
-                i.removePotionEffect(PotionEffectType.BAD_OMEN)
-            }
-            attack.spawnedEntity.clear()
-            attack.fightingPlayer.clear()
-            this.cancel()
-            attacking = false
-        }
+        attack.spawnedEntity.clear()
+        attack.fightingPlayer.clear()
+        attacking = false
     }
 }

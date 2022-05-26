@@ -6,17 +6,17 @@ api-version: 1.17
 depend: [Shopkeepers]
 
 commands:
-  game:
+  게임:
     permission: op
   leaderRight:
     permission: op
-  countryInfo:
+  국가정보:
 
   vote:
 
   finishMeeting:
 
-  revolution:
+  혁명:
 
   n:
 

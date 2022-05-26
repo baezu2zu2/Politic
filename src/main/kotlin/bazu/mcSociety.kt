@@ -3,6 +3,9 @@ package bazu
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
 
+//TODO 반란 쿨타임 2분(공용)
+//TODO 지도자 권한 행사 쿨타임 1분
+
 class mcSociety: JavaPlugin() {
     override fun onEnable() {
 
@@ -17,5 +20,9 @@ class mcSociety: JavaPlugin() {
                 command.setTabCompleter(Commands())
             }
         }
+    }
+
+    override fun onDisable() {
+        gameEnd()
     }
 }

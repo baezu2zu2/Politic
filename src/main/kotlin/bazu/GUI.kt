@@ -1,7 +1,9 @@
 package bazu;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.Style
 import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration
 import org.bukkit.*
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -135,6 +137,11 @@ class GUI: Listener {
     }
 
     fun sendPrision(player: Player, term: Int){
+        if (players.filter { it.scoreboardTags.contains("prison") }.size > players.size.toDouble()/4.0-1){
+            leader!!.sendMessage(Component.text("인구의 1/4이상이 감옥에 가면 경제가 붕괴됩니다!"))
+            return
+        }
+
         prisonTerm.value!!.getScore(player.name).score = term*20*60
         player.addScoreboardTag("prison")
     }
@@ -142,9 +149,6 @@ class GUI: Listener {
     fun changeTax(newTax: Int){
         Bukkit.broadcast(Component.text("세금이${tax}에서 ${newTax}로 변경되었습니다!"))
         tax = newTax
-
-        Bukkit.broadcast(Component.text("세금은 이제부터 ${taxTerm}분마다 걷어집니다!"))
-
     }
 
     fun choicePerson(player: Player){
@@ -237,10 +241,12 @@ class GUI: Listener {
 
 
 
-enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
-    CHANGE_LEADER(ItemStack(Material.PLAYER_HEAD), false){
+enum class Right(var item:ItemStack, val needVote: Boolean, val politicPower: Int): RightFunction{
+    CHANGE_LEADER(ItemStack(Material.PLAYER_HEAD), false, 10){
         init {
             item = genMeta(item, Component.text("리더 바꾸기", TextColor.color(0xff, 0xff, 0x0))
+                    , Component.text("요구 정치력 : ${this.politicPower}", Style.style(TextDecoration.ITALIC
+                    , TextColor.color(0x8b, 0x00, 0xff)))
                     , Component.text("현재 리더가 마음에 안드시나요?"), Component.text("리더를 바꿀 수 있습니다!"))
         }
 
@@ -268,9 +274,11 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
             isPlayerChoiced().runTaskTimer(inst.value, 0, 1)
         }
     },
-    ADD_POINT(ItemStack(Material.EMERALD), false){
+    ADD_POINT(ItemStack(Material.EMERALD), false, 5){
         init {
             item = genMeta(item, Component.text("에메랄드 주기", TextColor.color(0xff, 0xff, 0x0))
+                    , Component.text("요구 정치력 : ${this.politicPower}", Style.style(TextDecoration.ITALIC
+                    , TextColor.color(0x8b, 0x00, 0xff)))
                     , Component.text("에메랄드를 줘야 할 사람이 있다고요?")
                     , Component.text("어떤 목적이든 이걸 선택하시면 국고에서 에메랄드를 줄 수 있습니다."))
         }
@@ -309,12 +317,13 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
             isPlayerChoiced().runTaskTimer(inst.value, 0, 1)
         }
     },
-    REMOVE_POINT(ItemStack(Material.EMERALD), true){
+    REMOVE_POINT(ItemStack(Material.EMERALD), true, 30){
         init {
             item = genMeta(item, Component.text("에메랄드 뻈기", TextColor.color(0xff, 0xff, 0x0))
+                , Component.text("요구 정치력 : ${this.politicPower}", Style.style(TextDecoration.ITALIC
+                    , TextColor.color(0x8b, 0x00, 0xff)))
                 , Component.text("에메랄드를 뺏어야 할 사람이 있다고요?")
-                , Component.text("어떤 목적이든 이걸 선택하시면 국고로 에메랄드를 뺏을 수 있습니다.")
-                , Component.text("체제가 민주주의일 경우 민중의 과반수의 동의가 필요합니다."))
+                , Component.text("어떤 목적이든 이걸 선택하시면 국고로 에메랄드를 뺏을 수 있습니다."))
         }
 
         override fun run() {
@@ -351,12 +360,13 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
             isPlayerChoiced().runTaskTimer(inst.value, 0, 1)
         }
     },
-    PRISON(ItemStack(Material.IRON_BARS), true){
+    PRISON(ItemStack(Material.IRON_BARS), true, 30){
         init {
             item = genMeta(item, Component.text("감옥 보내기", TextColor.color(0xff, 0xff, 0x0))
+                    , Component.text("요구 정치력 : ${this.politicPower}", Style.style(TextDecoration.ITALIC
+                    , TextColor.color(0x8b, 0x00, 0xff)))
                     , Component.text("사람을 감옥에 보낼 수 있습니다!")
-                    , Component.text("주의사항: 감옥에 보내는 기간은 분 단위입니다.")
-                    , Component.text("체제가 민주주의일 경우 민중의 과반수의 동의가 필요합니다."))
+                    , Component.text("주의사항: 감옥에 보내는 기간은 분 단위입니다."))
         }
 
         override fun run() {
@@ -396,19 +406,20 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
             isPlayerChoiced().runTaskTimer(inst.value, 0, 1)
         }
     },
-    SET_TAX(ItemStack(Material.EMERALD), true) {
+    SET_TAX(ItemStack(Material.EMERALD), true, 20) {
         init {
             item = genMeta(item, Component.text("세금 설정", TextColor.color(0xff, 0xff, 0x0))
+                    , Component.text("요구 정치력 : ${this.politicPower}", Style.style(TextDecoration.ITALIC
+                    , TextColor.color(0x8b, 0x00, 0xff)))
                     , Component.text("세금을 더 많이 걷고 싶으신가요?")
                     , Component.text("아니면 세금이 너무 과다한가요?")
-                    , Component.text("여기서 세금을 변경하세요!")
-                    , Component.text("체제가 민주주의일 경우 민중의 과반수의 동의가 필요합니다."))
+                    , Component.text("여기서 세금을 변경하세요!"))
         }
 
         override fun run() {
             gui.choiceNumber(leader!!)
 
-            class isNumberChoiced: BukkitRunnable(){
+            object: BukkitRunnable(){
                 override fun run() {
                     if (gui.finished){
                         this.cancel()
@@ -424,14 +435,14 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
                         gui.decisionSucceed = SucceedProperty.FAILED
                     }
                 }
-            }
-
-            isNumberChoiced().runTaskTimer(inst.value, 0, 1)
+            }.runTaskTimer(inst.value, 0, 1)
         }
     },
-    OPEN_TREASURY(ItemStack(Material.CHEST), false){
+    OPEN_TREASURY(ItemStack(Material.CHEST), false, 0){
         init{
             item = genMeta(item, Component.text("국고 열기", TextColor.color(0xff, 0xff, 0x0))
+                , Component.text("요구 정치력 : ${this.politicPower}", Style.style(TextDecoration.ITALIC
+                    , TextColor.color(0x8b, 0x00, 0xff)))
                 , Component.text("현재 국가의 재정 상태는 어떤지 봅니다."))
         }
 
@@ -440,17 +451,48 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
             gui.decisionSucceed = SucceedProperty.SUCCEED
         }
     },
-    COUNTER_ATTACK(ItemStack(Material.IRON_SWORD), true){
+    COUNTER_ATTACK(ItemStack(Material.IRON_SWORD), true, 30){
         init{
             item = genMeta(item, Component.text("우민마을 공격하기", TextColor.color(0xff, 0xff, 0x0))
+                , Component.text("요구 정치력 : ${this.politicPower}", Style.style(TextDecoration.ITALIC
+                    , TextColor.color(0x8b, 0x00, 0xff)))
                 , Component.text("우민마을을 공격해 에메랄드를 약탈해 올 수 있습니다.")
-                , Component.text("우리를 괴롭혔던 우민들에게 역공하는 거죠!")
-                , Component.text("체제가 민주주의일 경우 민중의 과반수의 동의가 필요합니다."))
+                , Component.text("우리를 괴롭혔던 우민들에게 역공하는 거죠!"))
         }
 
         override fun run() {
             attack.counterAttack()
             gui.decisionSucceed = SucceedProperty.SUCCEED
+        }
+    },
+    FREE_PRISON(ItemStack(Material.TRIPWIRE_HOOK), true, 5){
+        init{
+            item = genMeta(item, Component.text("감옥에서 풀어주기", TextColor.color(0xff, 0xff, 0x0))
+                , Component.text("요구 정치력 : ${this.politicPower}", Style.style(TextDecoration.ITALIC
+                    , TextColor.color(0x8b, 0x00, 0xff)))
+                , Component.text("플레이어를 감옥에서 풀어줄 수 있습니다."))
+        }
+
+        override fun run() {
+            gui.choicePerson(leader!!)
+
+            class isPlayerChoiced: BukkitRunnable(){
+                override fun run() {
+                    if (gui.finished){
+                        this.cancel()
+                        gui.decisionSucceed = SucceedProperty.SUCCEED
+                        gui.finished = false
+
+                        prisonTerm.value!!.getScore(gui.choosedPlayer!!.name).score = 0
+                        gui.choosedPlayer!!.addScoreboardTag("prison")
+                    }else if (leader!!.openInventory.title() != Component.text("사람 선택")){
+                        this.cancel()
+                        gui.decisionSucceed = SucceedProperty.FAILED
+                    }
+                }
+            }
+
+            isPlayerChoiced().runTaskTimer(inst.value, 0, 1)
         }
     }
 }
@@ -458,10 +500,6 @@ enum class Right(var item:ItemStack, val needVote: Boolean): RightFunction{
 interface RightFunction{
     fun run()
 }
-
-
-
-
 
 
 
@@ -530,24 +568,37 @@ enum class Windows(val label: Component, var items: ArrayList<ItemStack>, val no
         override fun run(player: ArrayList<Player>) {
             gui.decisionSucceed = SucceedProperty.NOT_YET
 
-            val inv = Bukkit.createInventory(leader, 9, this.label)
+            val inv = Bukkit.createInventory(leader, 18, this.label)
 
-            for (i in 0 until Right.values().size) inv.setItem(i, Right.values()[i].item)
+            var item = ItemStack(Material.RED_BANNER)
+            item = genMeta(item, Component.text("정치력"), Component.text("정치력은 정책을 집행하는데 필요합니다.")
+                , Component.text("1분에 10씩 정치력이 증가하며 정치력이 없다면 정책을 집행할 수 없습니다.")
+                , Component.text("조심하세요. 정치력은 정권이 바뀌어도 그대로 유지됩니다.")
+                , Component.text("현재 정치력 : ${politicPower}"))
+
+            inv.setItem(4, item)
+
+            for (i in 0 until Right.values().size) inv.setItem(i+9, Right.values()[i].item)
 
             leader!!.openInventory(inv)
         }
 
         override fun click(item: ItemStack, player: Player): Boolean {
             for (i in Right.values()){
-                if (item == i.item){
+                if (item == i.item && politicPower >= i.politicPower){
                     if (system == System.DICTORSHIP) {
                         i.run()
 
                         class isSucceed: BukkitRunnable(){
                             override fun run() {
-                                if (gui.decisionSucceed != SucceedProperty.NOT_YET) this.cancel()
+                                if (gui.decisionSucceed != SucceedProperty.NOT_YET){
+                                    if (gui.decisionSucceed == SucceedProperty.SUCCEED)
+                                        politicPower -= i.politicPower
+                                    this.cancel()
+                                }
                                 if (gui.decisionSucceed == SucceedProperty.FAILED)
-                                    Windows.LEADER_DECISION.run(arrayListOf(leader!!)) }
+                                    Windows.LEADER_DECISION.run(arrayListOf(leader!!))
+                            }
                         }
 
                         isSucceed().runTaskTimer(inst.value, 0, 1)
@@ -640,42 +691,6 @@ enum class Windows(val label: Component, var items: ArrayList<ItemStack>, val no
                         revolutioning = true
 
                         this.cancel()
-
-                        class isFinishedRevolutioning : BukkitRunnable() {
-                            override fun run() {
-                                if (revolutionTeam.value!!.entries.isEmpty()) {
-                                    revolutioning = false
-
-
-                                    makeAdventure(false)
-
-                                    for (i in revolutionTeam.value!!.entries) revolutionTeam.value!!.removeEntry(i)
-                                    for (i in leaderTeam.value!!.entries) leaderTeam.value!!.removeEntry(i)
-                                    Bukkit.broadcast(Component.text("국가 진영이 승리했습니다!", TextColor.color(0xff, 0x00, 0x00)))
-                                    setLeaderWithMessage(leader!!)
-                                    Bukkit.getWorld("world")!!.setGameRule(GameRule.KEEP_INVENTORY, false)
-                                    this.cancel()
-                                } else if (leaderTeam.value!!.entries.isEmpty()) {
-                                    revolutioning = false
-                                    setLeaderWithMessage(players.filter {
-                                        it.scoreboardTags.contains("revolutionFirst")
-                                    }[0])
-                                    leader!!.scoreboardTags.remove("revolutionFirst")
-
-                                    for (i in players) {
-                                        i.gameMode = GameMode.ADVENTURE
-                                    }
-                                    for (i in revolutionTeam.value!!.entries) revolutionTeam.value!!.removeEntry(i)
-                                    for (i in leaderTeam.value!!.entries) leaderTeam.value!!.removeEntry(i)
-                                    for (i in midTeam.value!!.entries) leaderTeam.value!!.removeEntry(i)
-                                    Bukkit.getWorld("world")!!.setGameRule(GameRule.KEEP_INVENTORY, false)
-                                    Bukkit.broadcast(Component.text("혁명 진영이 승리했습니다!", TextColor.color(0x00, 0x00, 0xff)))
-                                    this.cancel()
-                                }
-                            }
-                        }
-
-                        isFinishedRevolutioning().runTaskTimer(inst.value, 0, 1)
                     }
                 }
             }
